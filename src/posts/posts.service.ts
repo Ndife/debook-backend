@@ -10,6 +10,7 @@ import { Queue } from 'bullmq';
 import { Post } from './entities/post.entity';
 import { PostLike } from './entities/post-like.entity';
 import { CreatePostDto } from './dto/create-post.dto';
+import { LikeJobPayload } from './interfaces/like-job.interface';
 
 @Injectable()
 export class PostsService {
@@ -71,7 +72,6 @@ export class PostsService {
     await this.notificationsQueue.add('post-liked', {
       postId,
       userId,
-      timestamp: new Date(),
-    });
+    } as LikeJobPayload);
   }
 }
