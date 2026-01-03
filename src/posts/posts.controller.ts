@@ -23,6 +23,7 @@ export class PostsController {
   constructor(private readonly postsService: PostsService) {}
 
   @Post()
+  @UseGuards(MockAuthGuard)
   create(@Body() createPostDto: CreatePostDto) {
     return this.postsService.create(createPostDto);
   }
