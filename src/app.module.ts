@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
+import { PostsModule } from './posts/posts.module';
 
 @Module({
   imports: [
@@ -34,6 +35,8 @@ import { BullModule } from '@nestjs/bullmq';
         },
       }),
     }),
+
+    PostsModule,
   ],
 })
 export class AppModule {}
