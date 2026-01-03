@@ -5,9 +5,15 @@ import {
   Body,
   Param,
   ParseUUIDPipe,
+  HttpCode,
+  HttpStatus,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import { PostsService } from './posts.service';
 import { CreatePostDto } from './dto/create-post.dto';
+import type { AuthenticatedRequest } from '../common/interfaces/authenticated-request.interface';
+import { MockAuthGuard } from '../common/guards/mock-auth.guard';
 
 @Controller({
   path: 'posts',
@@ -29,5 +35,15 @@ export class PostsController {
   @Get(':id')
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.postsService.findOne(id);
+  }
+
+  @Post(':id/like')
+  @UseGuards(MockAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async likePost(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.postsService.likePost(id, req.user.id);
   }
 }
