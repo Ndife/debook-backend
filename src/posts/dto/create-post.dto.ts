@@ -1,7 +1,13 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator';
+import { Transform, TransformFnParams } from 'class-transformer';
 
 export class CreatePostDto {
+  @Transform(({ value }: TransformFnParams) =>
+    typeof value === 'string' ? value.trim() : (value as unknown),
+  )
   @IsString()
   @IsNotEmpty()
+  @MinLength(5, { message: 'Post content is too short (min 5 chars)' })
+  @MaxLength(500, { message: 'Post content is too long (max 500 chars)' })
   content: string;
 }
