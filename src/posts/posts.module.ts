@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
 import { PostsService } from './posts.service';
 import { PostsController } from './posts.controller';
+import { PostsProcessor } from './posts.processor';
 import { Post } from './entities/post.entity';
 import { PostLike } from './entities/post-like.entity';
 
@@ -14,6 +15,6 @@ import { PostLike } from './entities/post-like.entity';
     }),
   ],
   controllers: [PostsController],
-  providers: [PostsService],
+  providers: [PostsService, PostsProcessor],
 })
 export class PostsModule {}
