@@ -61,12 +61,16 @@ export class PostsService {
       const newLike = this.postLikesRepository.create({ postId, userId });
       await queryRunner.manager.save(newLike);
 
-      const result: { likesCount: number }[] = await queryRunner.manager.query(
-        `UPDATE "post" SET "likesCount" = "likesCount" + 1 WHERE "id" = $1 RETURNING "likesCount"`,
-        [postId],
-      );
+      const result = await queryRunner.manager
+        .createQueryBuilder()
+        .update(Post)
+        .set({ likesCount: () => '"likesCount" + 1' })
+        .where('id = :id', { id: postId })
+        .returning(['likesCount'])
+        .execute();
 
-      updatedLikesCount = result[0].likesCount;
+      updatedLikesCount = (result.raw as { likesCount: number }[])[0]
+        .likesCount;
 
       await queryRunner.commitTransaction();
     } catch (error) {
