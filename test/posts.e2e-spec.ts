@@ -7,7 +7,6 @@ import { PostsService } from './../src/posts/posts.service';
 describe('PostsController (e2e)', () => {
   let app: INestApplication;
 
-  // Mock the Service (so we don't need a real DB connection for this test)
   const mockPostsService = {
     create: jest.fn().mockImplementation((dto) =>
       Promise.resolve({
@@ -31,7 +30,6 @@ describe('PostsController (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
 
-    // crucial: apply the same pipes as main.ts
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
 
     await app.init();
@@ -40,7 +38,7 @@ describe('PostsController (e2e)', () => {
   it('/posts (POST) - should create a post', () => {
     return request(app.getHttpServer())
       .post('/posts')
-      .set('x-user-id', 'user-123') // Pass the Guard
+      .set('x-user-id', 'user-123')
       .send({ content: 'Hello E2E World' })
       .expect(201)
       .expect((res) => {
@@ -54,15 +52,25 @@ describe('PostsController (e2e)', () => {
     return request(app.getHttpServer())
       .post('/posts')
       .send({ content: 'I am anonymous' })
-      .expect(401); // Guard Check
+      .expect(401);
   });
 
   it('/posts (POST) - should fail validation on short content', () => {
     return request(app.getHttpServer())
       .post('/posts')
       .set('x-user-id', 'user-123')
-      .send({ content: 'Hi' }) // Too short
-      .expect(400); // Validation Pipe Check
+      .send({ content: 'Hi' })
+      .expect(400);
+  });
+
+  it('/posts/:id/like (POST) - should like a post', () => {
+    return request(app.getHttpServer())
+      .post('/posts/123e4567-e89b-12d3-a456-426614174000/like')
+      .set('x-user-id', 'user-unique')
+      .expect(200)
+      .expect((res) => {
+        expect(res.body).toEqual({ likesCount: 1 });
+      });
   });
 
   afterAll(async () => {
