@@ -49,6 +49,19 @@ You can access the Swagger UI documentation at: **[http://localhost:3000/api](ht
 
 ---
 
+## 📡 API Overview
+
+The API is documented using Swagger. Key endpoints include:
+
+| Method | Endpoint             | Description                             |
+| :----- | :------------------- | :-------------------------------------- |
+| `GET`  | `/v1/posts`          | Get a paginated list of posts.          |
+| `GET`  | `/v1/posts/:id`      | Get details of a single post.           |
+| `POST` | `/v1/posts/:id/like` | Like a post (Idempotent, Asynchronous). |
+| `POST` | `/v1/posts`          | Create a new post.                      |
+
+---
+
 ## 🏗 Architecture & Engineering Decisions
 
 I tried to avoid premature optimization while ensuring the foundational architectural choices would handle high concurrency associated with social media interactions.
@@ -74,7 +87,31 @@ A user shouldn't be able to like a post twice.
 - **Database Constraints**: I enforce this at the database level with a unique compound index on the `post_likes` table (`unique: [postId, userId]`).
 - **Why**: Application logic can fail or have race conditions. The database is the final source of truth.
 
+### 4. Simplicity Trade-offs
+
+To keep the scope focused on the challenge requirements, I made a few explicit trade-offs:
+
+- **Authentication**: I used a simple `x-user-id` header to mock user context (via `MockAuthGuard`). In a production environment, this would be replaced by a proper JWT strategy (Passport.js).
+- **E2E Database**: The E2E tests mock the database repository for speed and stability in this standalone environment. For a real pipeline, I would spin up a test container with a fresh DB instance.
+
 ---
+
+## 📂 Project Structure
+
+Here is a high-level overview of the `src` directory:
+
+```
+src/
+├── common/          # Shared utilities (Constants, Guards, Interceptors)
+├── migrations/      # TypeORM migration files
+├── posts/           # Posts domain module
+│   ├── dto/         # Data Transfer Objects (Validation)
+│   ├── entities/    # Database Models
+│   ├── posts.processor.ts # Queue Worker (Likes/Views logic)
+│   └── posts.service.ts   # Business Logic
+├── app.module.ts    # Root Module
+└── main.ts          # Application Entry Point
+```
 
 ## 🧪 Testing
 
@@ -88,6 +125,16 @@ I've included both Unit and E2E tests to cover the critical paths.
   ```bash
   npm run test:e2e
   ```
+
+## 🛠 Development Utilities
+
+Helpful commands for development:
+
+- **Linting**: `npm run lint`
+- **Formatting**: `npm run format`
+- **Migrations**:
+  - Generate: `npm run migration:generate --name=MigrationName`
+  - Revert: `npm run migration:revert`
 
 ## 🛠 Tech Stack
 
