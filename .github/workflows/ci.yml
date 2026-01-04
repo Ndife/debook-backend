@@ -63,6 +63,6 @@ jobs:
           DB_PORT: 5432
           DB_USERNAME: test_user
           DB_PASSWORD: test_password
-          DB_DATABASE: debook_test
+          DB_NAME: debook_test
           REDIS_HOST: localhost
           REDIS_PORT: 6379
