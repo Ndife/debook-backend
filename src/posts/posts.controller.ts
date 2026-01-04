@@ -25,7 +25,7 @@ import { CreatePostDto } from './dto/create-post.dto';
 import type { AuthenticatedRequest } from '../common/interfaces/authenticated-request.interface';
 import { MockAuthGuard } from '../common/guards/mock-auth.guard';
 import { LikePostResponseDto } from './dto/like-post-response.dto';
-import { Post as PostEntity } from './entities/post.entity';
+import { PostResponseDto } from './dto/post-response.dto';
 
 @ApiTags('posts')
 @Controller({
@@ -40,7 +40,7 @@ export class PostsController {
   @ApiOperation({ summary: 'Create a new post' })
   @ApiCreatedResponse({
     description: 'The post has been successfully created.',
-    type: PostEntity,
+    type: PostResponseDto,
   })
   @ApiHeader({
     name: 'x-user-id',
@@ -58,7 +58,7 @@ export class PostsController {
       },
     },
   })
-  create(@Body() createPostDto: CreatePostDto) {
+  create(@Body() createPostDto: CreatePostDto): Promise<PostResponseDto> {
     return this.postsService.create(createPostDto);
   }
 
@@ -66,17 +66,17 @@ export class PostsController {
   @ApiOperation({ summary: 'Get all posts' })
   @ApiOkResponse({
     description: 'Return list of all posts',
-    type: [PostEntity],
+    type: [PostResponseDto],
   })
-  findAll() {
+  findAll(): Promise<PostResponseDto[]> {
     return this.postsService.findAll();
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a specific post' })
-  @ApiOkResponse({ description: 'The post details', type: PostEntity })
+  @ApiOkResponse({ description: 'The post details', type: PostResponseDto })
   @ApiNotFoundResponse({ description: 'Post not found' })
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
+  findOne(@Param('id', ParseUUIDPipe) id: string): Promise<PostResponseDto> {
     return this.postsService.findOne(id);
   }
 
@@ -104,10 +104,10 @@ export class PostsController {
       },
     },
   })
-  async likePost(
+  likePost(
     @Param('id', ParseUUIDPipe) id: string,
     @Req() req: AuthenticatedRequest,
-  ) {
+  ): Promise<LikePostResponseDto> {
     return this.postsService.likePost(id, req.user.id);
   }
 }
