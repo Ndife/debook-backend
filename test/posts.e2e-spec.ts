@@ -3,6 +3,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from './../src/app.module';
 import { PostsService } from './../src/posts/posts.service';
+import { Post } from './../src/posts/entities/post.entity';
 
 describe('PostsController (e2e)', () => {
   let app: INestApplication;
@@ -10,7 +11,7 @@ describe('PostsController (e2e)', () => {
   const mockPostsService = {
     create: jest.fn().mockImplementation((dto) =>
       Promise.resolve({
-        id: 'uuid-123',
+        id: '123e4567-e89b-12d3-a456-426614174000',
         ...dto,
         likesCount: 0,
         createdAt: new Date(),
@@ -29,9 +30,7 @@ describe('PostsController (e2e)', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
-
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
-
     await app.init();
   });
 
@@ -42,7 +41,7 @@ describe('PostsController (e2e)', () => {
       .send({ content: 'Hello E2E World' })
       .expect(201)
       .expect((res) => {
-        const body = res.body as { id: string; content: string };
+        const body = res.body as Post;
         expect(body.id).toBeDefined();
         expect(body.content).toEqual('Hello E2E World');
       });
@@ -74,6 +73,8 @@ describe('PostsController (e2e)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    if (app) {
+      await app.close();
+    }
   });
 });
