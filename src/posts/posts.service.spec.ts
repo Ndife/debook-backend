@@ -6,6 +6,7 @@ import { PostLike } from './entities/post-like.entity';
 import { DataSource } from 'typeorm';
 import { getQueueToken } from '@nestjs/bullmq';
 import { ConflictException, NotFoundException } from '@nestjs/common';
+import { PostgresErrorCode } from '../common/constants/postgres-errors';
 
 describe('PostsService', () => {
   let service: PostsService;
@@ -14,6 +15,7 @@ describe('PostsService', () => {
     findOne: jest.fn(),
     create: jest.fn(),
     save: jest.fn(),
+    find: jest.fn(),
   };
 
   const mockLikesRepository = {
@@ -21,7 +23,7 @@ describe('PostsService', () => {
   };
 
   const mockQueue = {
-    add: jest.fn(),
+    add: jest.fn().mockResolvedValue(true),
   };
 
   const mockQueryRunner = {
@@ -32,7 +34,7 @@ describe('PostsService', () => {
     release: jest.fn(),
     manager: {
       save: jest.fn(),
-      query: jest.fn(), // Mocking raw SQL query for 'RETURNING' clause
+      query: jest.fn(),
     },
   };
 
@@ -51,7 +53,7 @@ describe('PostsService', () => {
           provide: getRepositoryToken(PostLike),
           useValue: mockLikesRepository,
         },
-        { provide: getQueueToken('notifications'), useValue: mockQueue },
+        { provide: getQueueToken('posts-queue'), useValue: mockQueue },
         { provide: DataSource, useValue: mockDataSource },
       ],
     }).compile();
@@ -68,18 +70,18 @@ describe('PostsService', () => {
     const userId = 'user-123';
 
     it('should successfully like a post and return updated count', async () => {
-      // Arrange
-      mockPostsRepository.findOne.mockResolvedValue({ id: postId });
       mockQueryRunner.manager.query.mockResolvedValue([{ likesCount: 10 }]);
 
-      // Act
       const result = await service.likePost(postId, userId);
 
-      // Assert
       expect(result).toEqual({ likesCount: 10 });
 
       expect(mockDataSource.createQueryRunner).toHaveBeenCalled();
       expect(mockQueryRunner.startTransaction).toHaveBeenCalled();
+      expect(mockLikesRepository.create).toHaveBeenCalledWith({
+        postId,
+        userId,
+      });
       expect(mockQueryRunner.manager.save).toHaveBeenCalled();
       expect(mockQueryRunner.manager.query).toHaveBeenCalled();
       expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
@@ -91,31 +93,69 @@ describe('PostsService', () => {
       });
     });
 
-    it('should throw NotFoundException if post does not exist', async () => {
-      // Arrange
-      mockPostsRepository.findOne.mockResolvedValue(null);
+    it('should throw NotFoundException if post (ForeignKeyViolation) does not exist within transaction', async () => {
+      const fkError = { code: PostgresErrorCode.ForeignKeyViolation };
+      mockQueryRunner.manager.save.mockRejectedValue(fkError);
 
-      // Act & Assert
       await expect(service.likePost(postId, userId)).rejects.toThrow(
         NotFoundException,
       );
 
-      expect(mockDataSource.createQueryRunner).not.toHaveBeenCalled();
+      expect(mockQueryRunner.startTransaction).toHaveBeenCalled();
+      expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
+      expect(mockQueryRunner.release).toHaveBeenCalled();
     });
 
-    it('should throw ConflictException if user already liked the post', async () => {
-      // Arrange
-      mockPostsRepository.findOne.mockResolvedValue({ id: postId });
-      const duplicateError = { code: '23505' }; // Postgres unique violation code
+    it('should throw ConflictException if user already liked the post (UniqueViolation)', async () => {
+      const duplicateError = { code: PostgresErrorCode.UniqueViolation };
       mockQueryRunner.manager.save.mockRejectedValue(duplicateError);
 
-      // Act & Assert
       await expect(service.likePost(postId, userId)).rejects.toThrow(
         ConflictException,
       );
 
+      expect(mockQueryRunner.startTransaction).toHaveBeenCalled();
       expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
       expect(mockQueryRunner.release).toHaveBeenCalled();
+    });
+
+    it('should throw original error if unknown error occurs', async () => {
+      const unknownError = new Error('Database went boom');
+      mockQueryRunner.manager.save.mockRejectedValue(unknownError);
+
+      await expect(service.likePost(postId, userId)).rejects.toThrow(
+        'Database went boom',
+      );
+
+      expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
+      expect(mockQueryRunner.release).toHaveBeenCalled();
+    });
+  });
+
+  describe('findOne', () => {
+    it('should find a post and add a view event to the queue', async () => {
+      const postId = '123';
+      const mockPost = { id: postId, title: 'Test Post' } as unknown as Post;
+      mockPostsRepository.findOne.mockResolvedValue(mockPost);
+
+      const result = await service.findOne(postId);
+
+      expect(result).toEqual(mockPost);
+      expect(mockPostsRepository.findOne).toHaveBeenCalledWith({
+        where: { id: postId },
+      });
+
+      expect(mockQueue.add).toHaveBeenCalledWith('post-viewed', { postId });
+    });
+
+    it('should throw NotFoundException if post not found', async () => {
+      mockPostsRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.findOne('999')).rejects.toThrow(NotFoundException);
+
+      expect(mockQueue.add).toHaveBeenCalledWith('post-viewed', {
+        postId: '999',
+      });
     });
   });
 });
