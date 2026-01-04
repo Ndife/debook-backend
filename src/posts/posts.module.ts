@@ -11,7 +11,7 @@ import { PostLike } from './entities/post-like.entity';
   imports: [
     TypeOrmModule.forFeature([Post, PostLike]),
     BullModule.registerQueue({
-      name: 'notifications',
+      name: 'posts-queue',
     }),
   ],
   controllers: [PostsController],
