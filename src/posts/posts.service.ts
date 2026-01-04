@@ -33,7 +33,10 @@ export class PostsService {
   }
 
   findAll(): Promise<Post[]> {
-    return this.postsRepository.find();
+    return this.postsRepository.find({
+      order: { createdAt: 'DESC' },
+      take: 20,
+    });
   }
 
   async findOne(id: string): Promise<Post> {
