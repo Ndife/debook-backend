@@ -1,98 +1,99 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Debook Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Hi team! 👋
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+Here is my solution for the Debook backend coding challenge. I focused on building a system that is not just "feature-complete," but one that scales well under load and remains easy to maintain.
 
-## Description
+## 🚀 Quick Start
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+The easiest way to run this is with Docker to get the database and redis up, and then running the Node app locally for better DX (debugging/hot-reload).
 
-## Project setup
+### 1. Requirements
+
+- Node.js (v18+)
+- Docker & Docker Compose
+
+### 2. Setup
+
+First, get your environment variables ready:
 
 ```bash
-$ npm install
+cp .env.example .env
 ```
 
-## Compile and run the project
+_(The default values in `.env.example` are pre-configured to work with the docker-compose setup provided)_
+
+### 3. Run it
+
+Start the infrastructure:
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+docker-compose up -d
 ```
 
-## Run tests
+Install dependencies and run migrations:
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm install
+npm run migration:run
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Start the server:
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm run start:dev
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+The server will start at `http://localhost:3000`.
+You can access the Swagger UI documentation at: **[http://localhost:3000/api](http://localhost:3000/api)**
 
-## Resources
+---
 
-Check out a few resources that may come in handy when working with NestJS:
+## 🏗 Architecture & Engineering Decisions
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+I tried to avoid premature optimization while ensuring the foundational architectural choices would handle high concurrency associated with social media interactions.
 
-## Support
+### 1. High-Performance Counters (The "Like" Problem)
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+Instead of running a `COUNT(*)` query on a `likes` table every time a post is viewed (which is O(N) and gets slower as the app grows), I implemented **denormalized counters**.
 
-## Stay in touch
+- **Strategy**: Every Post `entity` has a `likesCount` column.
+- **Concurrency Handling**: I used atomic SQL updates (`UPDATE post SET "likesCount" = "likesCount" + 1`) inside a transaction. This ensures we never suffer from race conditions where two simultaneous likes overwrite each other.
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+### 2. Asynchronous Notifications (Queue System)
 
-## License
+Processing notifications synchronously (e.g., waiting for an email service or push notification API) kills API response time.
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+- **Solution**: I used **BullMQ (Redis)** to offload this work.
+- **Flow**: When a user likes a post, the API simply pushes a job to Redis and returns `200 OK` immediately. A background worker picks up the job and handles the "heavy lifting."
+
+### 3. Idempotency & Data Integrity
+
+A user shouldn't be able to like a post twice.
+
+- **Database Constraints**: I enforce this at the database level with a unique compound index on the `post_likes` table (`unique: [postId, userId]`).
+- **Why**: Application logic can fail or have race conditions. The database is the final source of truth.
+
+---
+
+## 🧪 Testing
+
+I've included both Unit and E2E tests to cover the critical paths.
+
+- **Unit Tests**: Focused on the Service layer, mocking the Repositories to test logic branching (e.g., handling "User already liked" conflicts).
+  ```bash
+  npm run test
+  ```
+- **E2E Tests**: Spins up the full application context (minus the real DB connection, mocked for speed and stability in this demo environment) to verify HTTP endpoints, Guards, and Pipes work together.
+  ```bash
+  npm run test:e2e
+  ```
+
+## 🛠 Tech Stack
+
+- **Framework**: NestJS (Standard, scalable, opinionated).
+- **Database**: PostgreSQL + TypeORM.
+- **Queues**: BullMQ + Redis.
+- **Validation**: `class-validator` & `class-transformer` for robust DTOs.
+
+Any feedback is welcome! implementation details are in the code comments. 💻
