@@ -13,6 +13,7 @@ import { PostLike } from './entities/post-like.entity';
 import { CreatePostDto } from './dto/create-post.dto';
 import { LikeJobPayload } from './interfaces/like-job.interface';
 import { LikePostResponseDto } from './dto/like-post-response.dto';
+import { PostgresErrorCode } from '../common/constants/postgres-errors';
 
 @Injectable()
 export class PostsService {
@@ -47,9 +48,6 @@ export class PostsService {
   }
 
   async likePost(postId: string, userId: string): Promise<LikePostResponseDto> {
-    const post = await this.postsRepository.findOne({ where: { id: postId } });
-    if (!post) throw new NotFoundException('Post not found');
-
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -71,9 +69,16 @@ export class PostsService {
     } catch (error) {
       await queryRunner.rollbackTransaction();
 
-      if ((error as { code: string }).code === '23505') {
+      const dbError = error as { code: string };
+
+      if (dbError.code === PostgresErrorCode.UniqueViolation) {
         throw new ConflictException('User already liked this post');
       }
+
+      if (dbError.code === PostgresErrorCode.ForeignKeyViolation) {
+        throw new NotFoundException('Post not found');
+      }
+
       throw error;
     } finally {
       await queryRunner.release();
