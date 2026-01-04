@@ -26,6 +26,14 @@ describe('PostsService', () => {
     add: jest.fn().mockResolvedValue(true),
   };
 
+  const mockQueryBuilder = {
+    update: jest.fn().mockReturnThis(),
+    set: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    returning: jest.fn().mockReturnThis(),
+    execute: jest.fn().mockResolvedValue({ raw: [{ likesCount: 10 }] }),
+  };
+
   const mockQueryRunner = {
     connect: jest.fn(),
     startTransaction: jest.fn(),
@@ -35,6 +43,7 @@ describe('PostsService', () => {
     manager: {
       save: jest.fn(),
       query: jest.fn(),
+      createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
     },
   };
 
@@ -70,8 +79,6 @@ describe('PostsService', () => {
     const userId = 'user-123';
 
     it('should successfully like a post and return updated count', async () => {
-      mockQueryRunner.manager.query.mockResolvedValue([{ likesCount: 10 }]);
-
       const result = await service.likePost(postId, userId);
 
       expect(result).toEqual({ likesCount: 10 });
@@ -83,7 +90,11 @@ describe('PostsService', () => {
         userId,
       });
       expect(mockQueryRunner.manager.save).toHaveBeenCalled();
-      expect(mockQueryRunner.manager.query).toHaveBeenCalled();
+
+      expect(mockQueryRunner.manager.createQueryBuilder).toHaveBeenCalled();
+      expect(mockQueryBuilder.update).toHaveBeenCalledWith(Post);
+      expect(mockQueryBuilder.execute).toHaveBeenCalled();
+
       expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
       expect(mockQueryRunner.release).toHaveBeenCalled();
 
