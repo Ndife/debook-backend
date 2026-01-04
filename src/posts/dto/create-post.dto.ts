@@ -1,7 +1,12 @@
 import { IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator';
 import { Transform, TransformFnParams } from 'class-transformer';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class CreatePostDto {
+  @ApiProperty({
+    example: 'This is my first viral post!',
+    description: 'The content of the post (5-500 chars)',
+  })
   @Transform(({ value }: TransformFnParams) =>
     typeof value === 'string' ? value.trim() : (value as unknown),
   )

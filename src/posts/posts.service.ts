@@ -11,6 +11,7 @@ import { Post } from './entities/post.entity';
 import { PostLike } from './entities/post-like.entity';
 import { CreatePostDto } from './dto/create-post.dto';
 import { LikeJobPayload } from './interfaces/like-job.interface';
+import { LikePostResponseDto } from './dto/like-post-response.dto';
 
 @Injectable()
 export class PostsService {
@@ -38,7 +39,7 @@ export class PostsService {
     return post;
   }
 
-  async likePost(postId: string, userId: string): Promise<void> {
+  async likePost(postId: string, userId: string): Promise<LikePostResponseDto> {
     const post = await this.postsRepository.findOne({ where: { id: postId } });
     if (!post) throw new NotFoundException('Post not found');
 
@@ -46,16 +47,18 @@ export class PostsService {
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
+    let updatedLikesCount: number;
+
     try {
       const newLike = this.postLikesRepository.create({ postId, userId });
       await queryRunner.manager.save(newLike);
 
-      await queryRunner.manager.increment(
-        Post,
-        { id: postId },
-        'likesCount',
-        1,
+      const result: { likesCount: number }[] = await queryRunner.manager.query(
+        `UPDATE "post" SET "likesCount" = "likesCount" + 1 WHERE "id" = $1 RETURNING "likesCount"`,
+        [postId],
       );
+
+      updatedLikesCount = result[0].likesCount;
 
       await queryRunner.commitTransaction();
     } catch (error) {
@@ -73,5 +76,7 @@ export class PostsService {
       postId,
       userId,
     } as LikeJobPayload);
+
+    return { likesCount: updatedLikesCount };
   }
 }
