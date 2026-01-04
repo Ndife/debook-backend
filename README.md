@@ -93,6 +93,8 @@ To keep the scope focused on the challenge requirements, I made a few explicit t
 
 - **Authentication**: I used a simple `x-user-id` header to mock user context (via `MockAuthGuard`). In a production environment, this would be replaced by a proper JWT strategy (Passport.js).
 - **E2E Database**: The E2E tests mock the database repository for speed and stability in this standalone environment. For a real pipeline, I would spin up a test container with a fresh DB instance.
+- **Caching**: I skipped HTTP caching for `GET /posts/:id` to allow immediate verification of the `likesCount` updates during your review. In production, I would use `CacheInterceptor` (Redis) with a short TTL or invalidation strategy.
+- **Pagination**: For the `GET /posts` endpoint, I utilized a simple limit (`take: 20`) rather than full cursor-based pagination, as the feed feature was not a primary requirement of the challenge.
 
 ---
 
