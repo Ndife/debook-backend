@@ -4,11 +4,35 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main, feat/*]
+    branches: [main, "feat/*"]
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: debook_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - uses: actions/checkout@v4
@@ -22,10 +46,10 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      - name: Lint (Check for formatting & "no-any")
+      - name: Lint
         run: npm run lint
 
-      - name: Build (Check for compilation errors)
+      - name: Build
         run: npm run build
 
       - name: Unit Tests
@@ -33,3 +57,12 @@ jobs:
 
       - name: E2E Tests
         run: npm run test:e2e
+        env:
+          NODE_ENV: test
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USERNAME: test_user
+          DB_PASSWORD: test_password
+          DB_DATABASE: debook_test
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
